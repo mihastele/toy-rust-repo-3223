@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useConnectionStore } from '../stores/connectionStore';
 import { DatabaseType } from '../types';
 
-const DB_TYPE_ICONS: Record<DatabaseType, string> = {
+const DB_TYPE_ICONS: Record<string, string> = {
   sqlite: '🗃️',
   postgresql: '🐘',
   mysql: '🐬',
@@ -17,8 +17,12 @@ const DB_TYPE_ICONS: Record<DatabaseType, string> = {
   elasticsearch: '🔍',
 };
 
-export function Sidebar() {
-  const { connections, selectConnection, removeConnection } = useConnectionStore();
+interface SidebarProps {
+  onAddConnection: () => void;
+}
+
+export function Sidebar({ onAddConnection }: SidebarProps) {
+  const { connections, selectConnection, removeConnection, connect, disconnect, selectedConnectionId } = useConnectionStore();
   const [expandedConnections, setExpandedConnections] = useState<Set<string>>(new Set());
   
   const toggleExpand = (id: string) => {
@@ -33,11 +37,21 @@ export function Sidebar() {
     });
   };
   
+  const handleConnect = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    const connection = connections.find(c => c.id === id);
+    if (connection?.status === 'connected') {
+      disconnect(id);
+    } else {
+      await connect(id);
+    }
+  };
+  
   return (
     <aside style={styles.sidebar}>
       <div style={styles.header}>
         <h2 style={styles.title}>Databases</h2>
-        <button style={styles.addButton} title="Add Connection">
+        <button style={styles.addButton} title="Add Connection" onClick={onAddConnection}>
           +
         </button>
       </div>
@@ -51,7 +65,10 @@ export function Sidebar() {
           connections.map((connection) => (
             <div key={connection.id} style={styles.connectionItem}>
               <div
-                style={styles.connectionHeader}
+                style={{
+                  ...styles.connectionHeader,
+                  backgroundColor: selectedConnectionId === connection.id ? 'var(--bg-active)' : 'transparent',
+                }}
                 onClick={() => {
                   toggleExpand(connection.id);
                   selectConnection(connection.id);
@@ -60,7 +77,7 @@ export function Sidebar() {
                 <span style={styles.expandIcon}>
                   {expandedConnections.has(connection.id) ? '▼' : '▶'}
                 </span>
-                <span style={styles.dbIcon}>{DB_TYPE_ICONS[connection.type]}</span>
+                <span style={styles.dbIcon}>{DB_TYPE_ICONS[connection.type as DatabaseType] || '🗄️'}</span>
                 <span style={styles.connectionName}>{connection.name}</span>
                 <span style={{...styles.statusDot, backgroundColor: getStatusColor(connection.status)}} />
               </div>
@@ -75,14 +92,31 @@ export function Sidebar() {
                     <span style={styles.detailLabel}>Database:</span>
                     <span style={styles.detailValue}>{connection.database}</span>
                   </div>
+                  <div style={styles.errorRow}>
+                    {connection.error && (
+                      <span style={styles.errorText}>{connection.error}</span>
+                    )}
+                  </div>
                   <div style={styles.actions}>
-                    <button style={styles.actionButton} title="Connect">▶</button>
+                    <button 
+                      style={{
+                        ...styles.actionButton,
+                        color: connection.status === 'connected' ? 'var(--accent-error)' : 'var(--accent-success)',
+                      }}
+                      title={connection.status === 'connected' ? 'Disconnect' : 'Connect'}
+                      onClick={(e) => handleConnect(e, connection.id)}
+                    >
+                      {connection.status === 'connected' ? '◼' : '▶'}
+                    </button>
                     <button style={styles.actionButton} title="Edit">✏️</button>
                     <button 
                       style={{...styles.actionButton, color: 'var(--accent-error)'}} 
                       title="Delete"
                       onClick={(e) => {
                         e.stopPropagation();
+                        if (connection.status === 'connected') {
+                          disconnect(connection.id);
+                        }
                         removeConnection(connection.id);
                       }}
                     >
@@ -201,6 +235,17 @@ const styles: Record<string, React.CSSProperties> = {
     color: 'var(--text-secondary)',
     flex: 1,
     wordBreak: 'break-all',
+  },
+  errorRow: {
+    marginTop: '8px',
+  },
+  errorText: {
+    fontSize: '11px',
+    color: 'var(--accent-error)',
+    backgroundColor: 'rgba(243, 139, 168, 0.1)',
+    padding: '4px 8px',
+    borderRadius: '4px',
+    display: 'block',
   },
   actions: {
     display: 'flex',

@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
 import { DatabaseType, ConnectionConfig } from '../types';
-import { useConnectionStore } from '../stores/connectionStore';
 
 interface ConnectionDialogProps {
   isOpen: boolean;
   onClose: () => void;
+  onSave: (config: Omit<ConnectionConfig, 'id' | 'createdAt' | 'updatedAt'>) => void;
   editConnection?: ConnectionConfig;
 }
 
@@ -19,13 +19,23 @@ const DB_TYPES: { value: DatabaseType; label: string; icon: string }[] = [
   { value: 'redis', label: 'Redis', icon: '🔴' },
 ];
 
-export function ConnectionDialog({ isOpen, onClose, editConnection }: ConnectionDialogProps) {
-  const { addConnection, updateConnection } = useConnectionStore();
+const DEFAULT_PORTS: Record<string, number> = {
+  sqlite: 0,
+  postgresql: 5432,
+  mysql: 3306,
+  mariadb: 3306,
+  sqlserver: 1433,
+  oracle: 1521,
+  mongodb: 27017,
+  redis: 6379,
+};
+
+export function ConnectionDialog({ isOpen, onClose, onSave, editConnection }: ConnectionDialogProps) {
   const [formData, setFormData] = useState({
     name: editConnection?.name || '',
     type: editConnection?.type || 'postgresql' as DatabaseType,
     host: editConnection?.host || 'localhost',
-    port: editConnection?.port || 5432,
+    port: editConnection?.port || DEFAULT_PORTS['postgresql'],
     database: editConnection?.database || '',
     username: editConnection?.username || '',
     password: editConnection?.password || '',
@@ -36,24 +46,27 @@ export function ConnectionDialog({ isOpen, onClose, editConnection }: Connection
     sshPassword: '',
     sshPrivateKey: '',
     useSsh: false,
+    autoConnect: true,
   });
   
   if (!isOpen) return null;
   
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (editConnection) {
-      updateConnection(editConnection.id, formData);
-    } else {
-      addConnection(formData);
-    }
-    
+    onSave(formData);
     onClose();
   };
   
   const handleChange = (field: string, value: any) => {
-    setFormData((prev) => ({ ...prev, [field]: value }));
+    if (field === 'type') {
+      setFormData((prev) => ({
+        ...prev,
+        type: value,
+        port: DEFAULT_PORTS[value] || prev.port,
+      }));
+    } else {
+      setFormData((prev) => ({ ...prev, [field]: value }));
+    }
   };
   
   return (
@@ -112,8 +125,8 @@ export function ConnectionDialog({ isOpen, onClose, editConnection }: Connection
                     style={styles.input}
                     type="number"
                     value={formData.port}
-                    onChange={(e) => handleChange('port', parseInt(e.target.value))}
-                    placeholder="5432"
+                    onChange={(e) => handleChange('port', parseInt(e.target.value) || 0)}
+                    placeholder={String(DEFAULT_PORTS[formData.type] || 5432)}
                     required
                   />
                 </div>
@@ -143,8 +156,8 @@ export function ConnectionDialog({ isOpen, onClose, editConnection }: Connection
                     style={styles.input}
                     value={formData.username}
                     onChange={(e) => handleChange('username', e.target.value)}
-                    placeholder="postgres"
-                    required
+                    placeholder={formData.type === 'mongodb' ? '' : 'postgres'}
+                    required={formData.type !== 'mongodb'}
                   />
                 </div>
                 <div style={styles.halfSection}>
@@ -174,69 +187,12 @@ export function ConnectionDialog({ isOpen, onClose, editConnection }: Connection
                 <label style={styles.checkboxLabel}>
                   <input
                     type="checkbox"
-                    checked={formData.useSsh}
-                    onChange={(e) => handleChange('useSsh', e.target.checked)}
+                    checked={formData.autoConnect}
+                    onChange={(e) => handleChange('autoConnect', e.target.checked)}
                   />
-                  Use SSH Tunnel
+                  Auto-connect after creating
                 </label>
               </div>
-              
-              {formData.useSsh && (
-                <div style={styles.sshSection}>
-                  <div style={styles.sshTitle}>SSH Configuration</div>
-                  <div style={styles.row}>
-                    <div style={styles.halfSection}>
-                      <label style={styles.label}>SSH Host</label>
-                      <input
-                        style={styles.input}
-                        value={formData.sshHost}
-                        onChange={(e) => handleChange('sshHost', e.target.value)}
-                        placeholder="ssh.example.com"
-                      />
-                    </div>
-                    <div style={styles.halfSection}>
-                      <label style={styles.label}>SSH Port</label>
-                      <input
-                        style={styles.input}
-                        type="number"
-                        value={formData.sshPort}
-                        onChange={(e) => handleChange('sshPort', parseInt(e.target.value))}
-                        placeholder="22"
-                      />
-                    </div>
-                  </div>
-                  <div style={styles.row}>
-                    <div style={styles.halfSection}>
-                      <label style={styles.label}>SSH Username</label>
-                      <input
-                        style={styles.input}
-                        value={formData.sshUsername}
-                        onChange={(e) => handleChange('sshUsername', e.target.value)}
-                        placeholder="ssh_user"
-                      />
-                    </div>
-                    <div style={styles.halfSection}>
-                      <label style={styles.label}>SSH Password</label>
-                      <input
-                        style={styles.input}
-                        type="password"
-                        value={formData.sshPassword}
-                        onChange={(e) => handleChange('sshPassword', e.target.value)}
-                        placeholder="ssh_password"
-                      />
-                    </div>
-                  </div>
-                  <div style={styles.section}>
-                    <label style={styles.label}>Private Key (Optional)</label>
-                    <textarea
-                      style={{...styles.input, minHeight: '60px', resize: 'vertical'}}
-                      value={formData.sshPrivateKey}
-                      onChange={(e) => handleChange('sshPrivateKey', e.target.value)}
-                      placeholder="-----BEGIN RSA PRIVATE KEY-----"
-                    />
-                  </div>
-                </div>
-              )}
             </>
           )}
           

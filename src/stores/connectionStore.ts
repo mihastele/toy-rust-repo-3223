@@ -68,10 +68,23 @@ export const useConnectionStore = create<ConnectionState>()(
         get().setConnectionStatus(id, 'connecting');
         
         try {
-          await window.__TAURI__.invoke('connect_database', { connection });
+          const connectionData = {
+            id: connection.id,
+            name: connection.name,
+            type: connection.type,
+            host: connection.host,
+            port: connection.port,
+            database: connection.database,
+            username: connection.username,
+            password: connection.password || '',
+            ssl: connection.ssl || false,
+          };
+          
+          await window.__TAURI__.invoke('connect_database', { connection: connectionData });
           get().setConnectionStatus(id, 'connected');
         } catch (error: any) {
-          get().setConnectionStatus(id, 'error', error.message);
+          const errorMessage = error.message || String(error);
+          get().setConnectionStatus(id, 'error', errorMessage);
         } finally {
           set({ isConnecting: false });
         }
