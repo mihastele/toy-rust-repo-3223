@@ -5,9 +5,11 @@ interface ToolbarProps {
   connection: Connection | undefined;
   onToggleHistory?: () => void;
   showHistory?: boolean;
+  onToggleSaved?: () => void;
+  showSaved?: boolean;
 }
 
-export function Toolbar({ connection, onToggleHistory, showHistory }: ToolbarProps) {
+export function Toolbar({ connection, onToggleHistory, showHistory, onToggleSaved, showSaved }: ToolbarProps) {
   return (
     <header style={styles.toolbar}>
       <div style={styles.left}>
@@ -39,20 +41,30 @@ export function Toolbar({ connection, onToggleHistory, showHistory }: ToolbarPro
             ...styles.toolbarButton,
             backgroundColor: showHistory ? 'var(--bg-active)' : 'transparent',
           }} 
-          title="Query History"
+          title="Query History (Ctrl+Shift+H)"
           onClick={onToggleHistory}
         >
           📝
         </button>
+        <button 
+          style={{
+            ...styles.toolbarButton,
+            backgroundColor: showSaved ? 'var(--bg-active)' : 'transparent',
+          }}
+          title="Saved Queries (Ctrl+Shift+S)"
+          onClick={onToggleSaved}
+        >
+          💾
+        </button>
         <button style={styles.toolbarButton} title="New Query">
           ➕
         </button>
-        <button style={styles.toolbarButton} title="Execute">
+        <button style={styles.toolbarButton} title="Execute (Ctrl+Enter)">
           ▶
         </button>
         <div style={styles.divider} />
-        <button style={styles.toolbarButton} title="Export">
-          💾
+        <button style={styles.toolbarButton} title="Export Results">
+          📤
         </button>
         <button style={styles.toolbarButton} title="Settings">
           ⚙️

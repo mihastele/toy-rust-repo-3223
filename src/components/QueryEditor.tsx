@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { Query, Connection } from '../types';
 import { useQueryStore } from '../stores/queryStore';
+import { formatSql, minifySql } from '../utils/sqlFormatter';
 
 interface QueryEditorProps {
   query: Query | undefined;
@@ -11,6 +12,7 @@ export function QueryEditor({ query, connection }: QueryEditorProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { executeQuery, updateQuery } = useQueryStore();
   const [isExecuting, setIsExecuting] = useState(false);
+  const [formatMode, setFormatMode] = useState<'format' | 'minify'>('format');
   
   useEffect(() => {
     if (textareaRef.current) {
@@ -53,20 +55,42 @@ export function QueryEditor({ query, connection }: QueryEditorProps) {
     }
   };
   
+  const handleFormat = () => {
+    if (!query) return;
+    const sql = formatMode === 'format' 
+      ? formatSql(query.sql) 
+      : minifySql(query.sql);
+    updateQuery(query.id, { sql });
+  };
+  
   return (
     <div style={styles.container}>
       <div style={styles.header}>
         <span style={styles.tabName}>SQL Query</span>
         <div style={styles.actions}>
           <button 
-            style={{...styles.executeButton, opacity: isExecuting ? 0.5 : 1}}
+            style={{
+              ...styles.formatButton,
+              backgroundColor: formatMode === 'format' ? 'var(--bg-active)' : 'transparent',
+            }}
+            onClick={() => {
+              setFormatMode(formatMode === 'format' ? 'minify' : 'format');
+              handleFormat();
+            }}
+            title={formatMode === 'format' ? 'Format SQL (Ctrl+Shift+F)' : 'Minify SQL'}
+          >
+            {formatMode === 'format' ? '✨' : '📦'}
+          </button>
+          <button 
+            style={{
+              ...styles.executeButton,
+              opacity: isExecuting ? 0.5 : 1,
+              backgroundColor: connection?.status === 'connected' ? 'var(--accent-success)' : 'var(--bg-active)',
+            }}
             onClick={handleExecute}
             disabled={isExecuting || !connection || connection.status !== 'connected'}
           >
-            ▶ Execute
-          </button>
-          <button style={styles.formatButton} title="Format SQL">
-            ✨
+            {isExecuting ? '⏳' : '▶'} Execute
           </button>
         </div>
       </div>
@@ -77,7 +101,7 @@ export function QueryEditor({ query, connection }: QueryEditorProps) {
           value={query?.sql || ''}
           onChange={(e) => updateQuery(query!.id, { sql: e.target.value })}
           onKeyDown={handleKeyDown}
-          placeholder={connection ? "Enter your SQL query here...\nPress Ctrl+Enter to execute" : "Connect to a database first"}
+          placeholder={connection ? "Enter your SQL query here...\nPress Ctrl+Enter to execute\nCtrl+Shift+F to format" : "Connect to a database first"}
           disabled={!connection || connection.status !== 'connected'}
           spellCheck={false}
         />
@@ -86,17 +110,24 @@ export function QueryEditor({ query, connection }: QueryEditorProps) {
         </div>
       </div>
       <div style={styles.statusBar}>
-        <span style={styles.statusText}>
-          {query?.status === 'idle' && 'Ready'}
-          {query?.status === 'running' && 'Executing...'}
-          {query?.status === 'completed' && `Completed in ${query.results?.executionTime || 0}ms`}
-          {query?.status === 'error' && 'Error'}
-        </span>
-        {query?.results && (
-          <span style={styles.rowCount}>
-            {query.results.rowCount} rows
+        <div style={styles.statusLeft}>
+          <span style={styles.statusText}>
+            {query?.status === 'idle' && 'Ready'}
+            {query?.status === 'running' && 'Executing...'}
+            {query?.status === 'completed' && `✓ Completed in ${query.results?.executionTime || 0}ms`}
+            {query?.status === 'error' && '✗ Error'}
           </span>
-        )}
+          {query?.results && (
+            <span style={styles.rowCount}>
+              {query.results.rowCount} rows
+            </span>
+          )}
+        </div>
+        <div style={styles.statusRight}>
+          <span style={styles.hint}>
+            {query?.sql ? `${query.sql.length} chars` : '0 chars'}
+          </span>
+        </div>
       </div>
     </div>
   );
@@ -146,6 +177,7 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '4px 8px',
     borderRadius: '4px',
     fontSize: '12px',
+    border: '1px solid var(--border-color)',
   },
   editorWrapper: {
     flex: 1,

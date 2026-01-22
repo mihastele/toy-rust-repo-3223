@@ -5,12 +5,14 @@ import { QueryEditor } from './components/QueryEditor';
 import { ResultsTable } from './components/ResultsTable';
 import { SchemaBrowser } from './components/SchemaBrowser';
 import { QueryHistoryPanel } from './components/QueryHistoryPanel';
+import { SavedQueriesPanel } from './components/SavedQueriesPanel';
 import { ConnectionDialog } from './components/ConnectionDialog';
 import { useConnectionStore } from './stores/connectionStore';
 import { useQueryStore } from './stores/queryStore';
 
 export default function App() {
   const [showHistory, setShowHistory] = useState(false);
+  const [showSavedQueries, setShowSavedQueries] = useState(false);
   const [showConnectionDialog, setShowConnectionDialog] = useState(false);
   const { connections, selectedConnectionId, addConnection, connect } = useConnectionStore();
   const { activeQueryId, queries, updateQuery, createQuery } = useQueryStore();
@@ -75,6 +77,8 @@ export default function App() {
         connection={selectedConnection} 
         onToggleHistory={() => setShowHistory(!showHistory)}
         showHistory={showHistory}
+        onToggleSaved={() => setShowSavedQueries(!showSavedQueries)}
+        showSaved={showSavedQueries}
       />
       <div className="main-content">
         <Sidebar onAddConnection={() => setShowConnectionDialog(true)} />
@@ -88,6 +92,16 @@ export default function App() {
         isOpen={showHistory}
         onClose={() => setShowHistory(false)}
         onSelectQuery={handleSelectFromHistory}
+      />
+      <SavedQueriesPanel
+        isOpen={showSavedQueries}
+        onClose={() => setShowSavedQueries(false)}
+        onSelectQuery={(sql) => {
+          if (activeQuery) {
+            updateQuery(activeQuery.id, { sql });
+          }
+          setShowSavedQueries(false);
+        }}
       />
       <ConnectionDialog
         isOpen={showConnectionDialog}
