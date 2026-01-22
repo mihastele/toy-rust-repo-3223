@@ -1,4 +1,4 @@
-use sqlx::{Row, TypeInfo};
+use sqlx::{Row, TypeInfo, PgPool, MySqlPool, SqlitePool};
 use crate::types::{ConnectionConfig, ColumnInfo, TableInfo, QueryRow};
 
 fn convert_to_json_value(row: &sqlx::any::AnyRow, index: usize) -> serde_json::Value {
@@ -53,11 +53,13 @@ fn convert_to_json_value(row: &sqlx::any::AnyRow, index: usize) -> serde_json::V
 pub struct DatabaseConnection {
     config: ConnectionConfig,
     pool: sqlx::AnyPool,
+    db_type: String,
 }
 
 impl DatabaseConnection {
     pub async fn new(config: ConnectionConfig) -> Result<Self, Box<dyn std::error::Error>> {
         let password = config.password.clone().unwrap_or_default();
+        let db_type = config.r#type.clone();
         let url = match config.r#type.as_str() {
             "sqlite" => format!("sqlite:{}", config.database),
             "postgresql" => {
@@ -88,9 +90,10 @@ impl DatabaseConnection {
             ))),
         };
         
+        sqlx::any::install_default_drivers();
         let pool = sqlx::AnyPool::connect(&url).await?;
         
-        Ok(Self { config, pool })
+        Ok(Self { config, pool, db_type })
     }
     
     pub async fn execute_query(&self, sql: &str) -> Result<QueryRow, Box<dyn std::error::Error>> {
@@ -133,7 +136,7 @@ impl DatabaseConnection {
     }
     
     pub async fn get_schema(&self) -> Result<Vec<TableInfo>, Box<dyn std::error::Error>> {
-        let query = match self.config.r#type.as_str() {
+        let query = match self.db_type.as_str() {
             "sqlite" => r#"
                 SELECT name, type FROM (
                     SELECT name, 'table' as type FROM sqlite_master WHERE type='table'
@@ -191,7 +194,7 @@ impl DatabaseConnection {
     }
     
     async fn get_columns(&self, table_name: &str) -> Result<Vec<ColumnInfo>, Box<dyn std::error::Error>> {
-        let query = match self.config.r#type.as_str() {
+        let query = match self.db_type.as_str() {
             "sqlite" => format!("PRAGMA table_info({})", table_name),
             "postgresql" => format!(
                 "SELECT column_name, data_type, is_nullable, column_default, is_primary_key \
@@ -218,7 +221,7 @@ impl DatabaseConnection {
         let mut columns = Vec::new();
         
         for row in &rows {
-            let column = match self.config.r#type.as_str() {
+            let column = match self.db_type.as_str() {
                 "sqlite" => {
                     let _cid: i32 = row.try_get(0)?;
                     let name: String = row.try_get(1)?;
