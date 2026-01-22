@@ -19,9 +19,10 @@ const DB_TYPE_ICONS: Record<string, string> = {
 
 interface SidebarProps {
   onAddConnection: () => void;
+  onEditConnection: (id: string) => void;
 }
 
-export function Sidebar({ onAddConnection }: SidebarProps) {
+export function Sidebar({ onAddConnection, onEditConnection }: SidebarProps) {
   const { connections, selectConnection, removeConnection, connect, disconnect, selectedConnectionId } = useConnectionStore();
   const [expandedConnections, setExpandedConnections] = useState<Set<string>>(new Set());
   
@@ -108,7 +109,16 @@ export function Sidebar({ onAddConnection }: SidebarProps) {
                     >
                       {connection.status === 'connected' ? '◼' : '▶'}
                     </button>
-                    <button style={styles.actionButton} title="Edit">✏️</button>
+                    <button 
+                      style={styles.actionButton} 
+                      title="Edit"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onEditConnection(connection.id);
+                      }}
+                    >
+                      ✏️
+                    </button>
                     <button 
                       style={{...styles.actionButton, color: 'var(--accent-error)'}} 
                       title="Delete"

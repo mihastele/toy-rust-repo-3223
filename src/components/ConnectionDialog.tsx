@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { DatabaseType, ConnectionConfig } from '../types';
+import { useConnectionStore } from '../stores/connectionStore';
 
 interface ConnectionDialogProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (config: Omit<ConnectionConfig, 'id' | 'createdAt' | 'updatedAt'>) => void;
-  editConnection?: ConnectionConfig;
+  editingConnectionId?: string | null;
 }
 
 const DB_TYPES: { value: DatabaseType; label: string; icon: string }[] = [
@@ -30,22 +31,25 @@ const DEFAULT_PORTS: Record<string, number> = {
   redis: 6379,
 };
 
-export function ConnectionDialog({ isOpen, onClose, onSave, editConnection }: ConnectionDialogProps) {
+export function ConnectionDialog({ isOpen, onClose, onSave, editingConnectionId }: ConnectionDialogProps) {
+  const { connections } = useConnectionStore();
+  const editingConnection = connections.find(c => c.id === editingConnectionId);
+  
   const [formData, setFormData] = useState({
-    name: editConnection?.name || '',
-    type: editConnection?.type || 'postgresql' as DatabaseType,
-    host: editConnection?.host || 'localhost',
-    port: editConnection?.port || DEFAULT_PORTS['postgresql'],
-    database: editConnection?.database || '',
-    username: editConnection?.username || '',
-    password: editConnection?.password || '',
-    ssl: editConnection?.ssl || false,
-    sshHost: '',
-    sshPort: 22,
-    sshUsername: '',
+    name: editingConnection?.name || '',
+    type: editingConnection?.type || 'postgresql' as DatabaseType,
+    host: editingConnection?.host || 'localhost',
+    port: editingConnection?.port || DEFAULT_PORTS['postgresql'],
+    database: editingConnection?.database || '',
+    username: editingConnection?.username || '',
+    password: editingConnection?.password || '',
+    ssl: editingConnection?.ssl || false,
+    sshHost: editingConnection?.ssh?.host || '',
+    sshPort: editingConnection?.ssh?.port || 22,
+    sshUsername: editingConnection?.ssh?.username || '',
     sshPassword: '',
-    sshPrivateKey: '',
-    useSsh: false,
+    sshPrivateKey: editingConnection?.ssh?.privateKey || '',
+    useSsh: !!editingConnection?.ssh,
     autoConnect: true,
   });
   
@@ -74,7 +78,7 @@ export function ConnectionDialog({ isOpen, onClose, onSave, editConnection }: Co
       <div style={styles.dialog} onClick={(e) => e.stopPropagation()}>
         <div style={styles.header}>
           <h2 style={styles.title}>
-            {editConnection ? 'Edit Connection' : 'New Connection'}
+            {editingConnection ? 'Edit Connection' : 'New Connection'}
           </h2>
           <button style={styles.closeButton} onClick={onClose}>×</button>
         </div>
@@ -201,7 +205,7 @@ export function ConnectionDialog({ isOpen, onClose, onSave, editConnection }: Co
               Cancel
             </button>
             <button type="submit" style={styles.submitButton}>
-              {editConnection ? 'Save Changes' : 'Create Connection'}
+              {editingConnection ? 'Save Changes' : 'Create Connection'}
             </button>
           </div>
         </form>

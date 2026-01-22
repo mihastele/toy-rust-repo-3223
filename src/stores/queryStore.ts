@@ -64,6 +64,8 @@ export const useQueryStore = create<QueryState>((set, get) => ({
     const startTime = Date.now();
     get().updateQuery(id, { status: 'running' });
     
+    console.log('[DEBUG] Frontend: Executing query', { id, sql });
+    
     try {
        const result = await invoke<{
         columns: string[];
@@ -73,6 +75,12 @@ export const useQueryStore = create<QueryState>((set, get) => ({
         affected_rows: number;
       }>('execute_query', { id, sql });
       const executionTime = Date.now() - startTime;
+      
+      console.log('[DEBUG] Frontend: Query result', { 
+        columns: result.columns, 
+        rowCount: result.row_count,
+        executionTime 
+      });
       
        const queryResult: QueryResult = {
         columns: result.columns,
@@ -89,6 +97,8 @@ export const useQueryStore = create<QueryState>((set, get) => ({
         executedAt: new Date(),
       });
       
+      console.log('[DEBUG] Frontend: Query completed successfully');
+      
       get().addToHistory({
         connectionId: get().queries.find((q) => q.id === id)?.connectionId || '',
         sql,
@@ -99,6 +109,8 @@ export const useQueryStore = create<QueryState>((set, get) => ({
       
       return queryResult;
     } catch (error: any) {
+      console.error('[DEBUG] Frontend: Query error', error);
+      
       get().updateQuery(id, { status: 'error' });
       
       get().addToHistory({

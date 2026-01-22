@@ -14,11 +14,17 @@ export default function App() {
   const [showHistory, setShowHistory] = useState(false);
   const [showSavedQueries, setShowSavedQueries] = useState(false);
   const [showConnectionDialog, setShowConnectionDialog] = useState(false);
-  const { connections, selectedConnectionId, addConnection, connect } = useConnectionStore();
+  const [editingConnectionId, setEditingConnectionId] = useState<string | null>(null);
+  const { connections, selectedConnectionId, addConnection, connect, loadConnections, updateConnection } = useConnectionStore();
   const { activeQueryId, queries, updateQuery, createQuery } = useQueryStore();
   
   const selectedConnection = connections.find(c => c.id === selectedConnectionId);
   const activeQuery = queries.find(q => q.id === activeQueryId);
+
+  useEffect(() => {
+    // Load connections from SQLite on app startup
+    loadConnections();
+  }, [loadConnections]);
 
   useEffect(() => {
     if (selectedConnectionId && !activeQuery) {
@@ -33,11 +39,25 @@ export default function App() {
     setShowHistory(false);
   };
 
+  const handleEditConnection = (id: string) => {
+    setEditingConnectionId(id);
+    setShowConnectionDialog(true);
+  };
+
   const handleAddConnection = async (config: any) => {
     const id = addConnection(config);
     setShowConnectionDialog(false);
+    setEditingConnectionId(null);
     if (config.autoConnect !== false) {
       await connect(id);
+    }
+  };
+
+  const handleUpdateConnection = async (config: any) => {
+    if (editingConnectionId) {
+      updateConnection(editingConnectionId, config);
+      setShowConnectionDialog(false);
+      setEditingConnectionId(null);
     }
   };
 
@@ -81,7 +101,10 @@ export default function App() {
         showSaved={showSavedQueries}
       />
       <div className="main-content">
-        <Sidebar onAddConnection={() => setShowConnectionDialog(true)} />
+        <Sidebar 
+          onAddConnection={() => setShowConnectionDialog(true)}
+          onEditConnection={handleEditConnection}
+        />
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           <SchemaBrowser connection={selectedConnection} onQuickAction={handleQuickAction} />
           <QueryEditor query={activeQuery} connection={selectedConnection} />
@@ -105,8 +128,12 @@ export default function App() {
       />
       <ConnectionDialog
         isOpen={showConnectionDialog}
-        onClose={() => setShowConnectionDialog(false)}
-        onSave={handleAddConnection}
+        onClose={() => {
+          setShowConnectionDialog(false);
+          setEditingConnectionId(null);
+        }}
+        onSave={editingConnectionId ? handleUpdateConnection : handleAddConnection}
+        editingConnectionId={editingConnectionId}
       />
     </div>
   );

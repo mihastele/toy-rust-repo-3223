@@ -37,6 +37,47 @@ pub struct QueryResult {
 }
 
 #[tauri::command]
+async fn load_connections(
+    state: tauri::State<'_, AppState>,
+) -> Result<Vec<AppConnectionConfig>, String> {
+    // For now, return empty vec - connections are handled in frontend with localStorage
+    Ok(vec![])
+}
+
+#[tauri::command]
+async fn save_connection(
+    state: tauri::State<'_, AppState>,
+    connection: AppConnectionConfig,
+) -> Result<(), String> {
+    // For now, just log the connection - actual persistence is handled in frontend
+    println!("[DEBUG] Connection saved: {}", connection.name);
+    Ok(())
+}
+
+#[tauri::command]
+async fn delete_connection(
+    state: tauri::State<'_, AppState>,
+    id: String,
+) -> Result<(), String> {
+    // Remove from runtime state
+    let mut connections = state.connections.lock().await;
+    connections.remove(&id);
+    
+    // Also handle in frontend
+    println!("[DEBUG] Connection deleted: {}", id);
+    Ok(())
+}
+
+#[tauri::command]
+async fn get_connection(
+    state: tauri::State<'_, AppState>,
+    id: String,
+) -> Result<Option<AppConnectionConfig>, String> {
+    // For now, return None - connections are handled in frontend with localStorage
+    Ok(None)
+}
+
+#[tauri::command]
 async fn connect_database(
     _app: AppHandle,
     state: tauri::State<'_, AppState>,
@@ -83,20 +124,38 @@ async fn execute_query(
     id: String,
     sql: String,
 ) -> Result<QueryResult, String> {
-    let mut connections = state.connections.lock().await;
-    let conn = connections.get_mut(&id).ok_or("Not connected")?;
+    println!("[DEBUG] execute_query called with connection_id: {}, sql: {}", id, sql);
     
-    let result = match conn {
-        DbConnection::Sql(c) => c.execute_query(&sql).await
-            .map_err(|e| e.to_string())?,
-        DbConnection::Mongo(c) => c.execute_mql(&sql).await
-            .map_err(|e| e.to_string())?,
-        DbConnection::Redis(c) => c.execute_redis_cmd(&sql).await
-            .map_err(|e| e.to_string())?,
+    // Use separate scope for each lock to prevent deadlock
+    let result = {
+        let mut connections = state.connections.lock().await;
+        let conn = connections.get_mut(&id).ok_or("Not connected")?;
+        
+        println!("[DEBUG] Found connection, executing query...");
+        
+        match conn {
+            DbConnection::Sql(c) => c.execute_query(&sql).await
+                .map_err(|e| {
+                    println!("[DEBUG] SQL query error: {:?}", e);
+                    e.to_string()
+                })?,
+            DbConnection::Mongo(c) => c.execute_mql(&sql).await
+                .map_err(|e| {
+                    println!("[DEBUG] MongoDB query error: {:?}", e);
+                    e.to_string()
+                })?,
+            DbConnection::Redis(c) => c.execute_redis_cmd(&sql).await
+                .map_err(|e| {
+                    println!("[DEBUG] Redis command error: {:?}", e);
+                    e.to_string()
+                })?,
+        }
     };
     
     let start = std::time::Instant::now();
     let row_count = result.rows.len();
+    
+    println!("[DEBUG] Query completed, returning {} rows", row_count);
     
     Ok(QueryResult {
         columns: result.columns,
@@ -133,16 +192,36 @@ async fn execute_ddl(
     connection_id: String,
     ddl: String,
 ) -> Result<(), String> {
+    println!("[DEBUG] execute_ddl called with connection_id: {}, ddl: {}", connection_id, ddl);
+    
     let mut connections = state.connections.lock().await;
     let conn = connections.get_mut(&connection_id).ok_or("Not connected")?;
     
+    println!("[DEBUG] Found connection, executing DDL...");
+    
     match conn {
         DbConnection::Sql(c) => c.execute_ddl(&ddl).await
-            .map_err(|e| e.to_string())?,
-        DbConnection::Mongo(c) => { c.execute_mql(&ddl).await.map_err(|e| e.to_string())?; }
-        DbConnection::Redis(c) => { c.execute_redis_cmd(&ddl).await.map_err(|e| e.to_string())?; }
+            .map_err(|e| {
+                println!("[DEBUG] DDL execution error: {:?}", e);
+                e.to_string()
+            })?,
+        DbConnection::Mongo(c) => { 
+            c.execute_mql(&ddl).await
+            .map_err(|e| {
+                println!("[DEBUG] MongoDB DDL error: {:?}", e);
+                e.to_string()
+            })?; 
+        }
+        DbConnection::Redis(c) => { 
+            c.execute_redis_cmd(&ddl).await
+            .map_err(|e| {
+                println!("[DEBUG] Redis DDL error: {:?}", e);
+                e.to_string()
+            })?; 
+        }
     }
     
+    println!("[DEBUG] DDL executed successfully");
     Ok(())
 }
 
@@ -153,6 +232,10 @@ fn main() {
             connections: Arc::new(Mutex::new(HashMap::new())),
         })
         .invoke_handler(tauri::generate_handler![
+            load_connections,
+            save_connection,
+            delete_connection,
+            get_connection,
             connect_database,
             disconnect_database,
             execute_query,

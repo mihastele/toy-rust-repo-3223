@@ -99,12 +99,15 @@ impl DatabaseConnection {
     pub async fn execute_query(&self, sql: &str) -> Result<QueryRow, Box<dyn std::error::Error>> {
         let start = std::time::Instant::now();
         
+        println!("[DEBUG] Executing SQL: {}", sql);
+        println!("[DEBUG] Database type: {}", self.db_type);
+        
         let rows = sqlx::query(sql)
             .fetch_all(&self.pool)
             .await?;
         
         let execution_time = start.elapsed();
-        println!("Query executed in {:?}", execution_time);
+        println!("[DEBUG] Query executed in {:?}, returned {} rows", execution_time, rows.len());
         
         let mut columns = Vec::new();
         let mut types = Vec::new();
@@ -116,6 +119,7 @@ impl DatabaseConnection {
                 columns.push(column.name.to_string());
                 types.push(format!("{:?}", column.type_info));
             }
+            println!("[DEBUG] Found {} columns: {:?}", columns.len(), columns);
         }
         
         for row in &rows {
@@ -126,6 +130,8 @@ impl DatabaseConnection {
             }
             results.push(values);
         }
+        
+        println!("[DEBUG] Processed {} result rows", results.len());
         
         Ok(QueryRow {
             columns,
@@ -263,7 +269,12 @@ impl DatabaseConnection {
     }
     
     pub async fn execute_ddl(&self, ddl: &str) -> Result<(), Box<dyn std::error::Error>> {
-        self.pool.execute(ddl).await?;
+        println!("[DEBUG] Executing DDL: {}", ddl);
+        println!("[DEBUG] Database type: {}", self.db_type);
+        
+        let result = self.pool.execute(ddl).await?;
+        println!("[DEBUG] DDL executed successfully, affected rows: {}", result.rows_affected());
+        
         Ok(())
     }
 }
