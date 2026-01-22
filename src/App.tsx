@@ -39,6 +39,36 @@ export default function App() {
     }
   };
 
+  const handleQuickAction = (action: string, tableName: string) => {
+    if (!activeQuery || !selectedConnection) return;
+    
+    let sql = '';
+    switch (action) {
+      case 'select':
+        sql = `SELECT * FROM "${tableName}" LIMIT 100;`;
+        break;
+      case 'generate_select':
+        sql = `SELECT * FROM "${tableName}" WHERE id = 1;`;
+        break;
+      case 'generate_insert':
+        sql = `INSERT INTO "${tableName}" (column1, column2) VALUES ('value1', 'value2');`;
+        break;
+      case 'generate_update':
+        sql = `UPDATE "${tableName}" SET column1 = 'new_value' WHERE id = 1;`;
+        break;
+      case 'truncate':
+        sql = `TRUNCATE TABLE "${tableName}";`;
+        break;
+      case 'drop':
+        sql = `DROP TABLE IF EXISTS "${tableName}";`;
+        break;
+      default:
+        return;
+    }
+    
+    updateQuery(activeQuery.id, { sql });
+  };
+
   return (
     <div className="app-container">
       <Toolbar 
@@ -49,7 +79,7 @@ export default function App() {
       <div className="main-content">
         <Sidebar onAddConnection={() => setShowConnectionDialog(true)} />
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          <SchemaBrowser connection={selectedConnection} />
+          <SchemaBrowser connection={selectedConnection} onQuickAction={handleQuickAction} />
           <QueryEditor query={activeQuery} connection={selectedConnection} />
           <ResultsTable query={activeQuery} />
         </div>
