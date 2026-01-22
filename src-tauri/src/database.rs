@@ -1,4 +1,4 @@
-use sqlx::{Row, TypeInfo, PgPool, MySqlPool, SqlitePool};
+use sqlx::{Row, TypeInfo, PgPool, MySqlPool, SqlitePool, Executor};
 use crate::types::{ConnectionConfig, ColumnInfo, TableInfo, QueryRow};
 
 fn convert_to_json_value(row: &sqlx::any::AnyRow, index: usize) -> serde_json::Value {
@@ -99,8 +99,7 @@ impl DatabaseConnection {
     pub async fn execute_query(&self, sql: &str) -> Result<QueryRow, Box<dyn std::error::Error>> {
         let start = std::time::Instant::now();
         
-        let rows = sqlx::QueryBuilder::new(sql)
-            .build()
+        let rows = sqlx::query(sql)
             .fetch_all(&self.pool)
             .await?;
         
@@ -163,8 +162,7 @@ impl DatabaseConnection {
             ))),
         };
         
-        let rows = sqlx::QueryBuilder::new(query)
-            .build()
+        let rows = sqlx::query(query)
             .fetch_all(&self.pool)
             .await?;
         
@@ -213,8 +211,7 @@ impl DatabaseConnection {
             _ => return Ok(Vec::new()),
         };
         
-        let rows = sqlx::QueryBuilder::new(&query)
-            .build()
+        let rows = sqlx::query(&query)
             .fetch_all(&self.pool)
             .await?;
         
@@ -266,10 +263,7 @@ impl DatabaseConnection {
     }
     
     pub async fn execute_ddl(&self, ddl: &str) -> Result<(), Box<dyn std::error::Error>> {
-        sqlx::QueryBuilder::new(ddl)
-            .build()
-            .execute(&self.pool)
-            .await?;
+        self.pool.execute(ddl).await?;
         Ok(())
     }
 }
