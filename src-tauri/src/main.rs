@@ -127,6 +127,25 @@ async fn get_schema(
     }
 }
 
+#[tauri::command]
+async fn execute_ddl(
+    state: tauri::State<'_, AppState>,
+    connection_id: String,
+    ddl: String,
+) -> Result<(), String> {
+    let mut connections = state.connections.lock().await;
+    let conn = connections.get_mut(&connection_id).ok_or("Not connected")?;
+    
+    match conn {
+        DbConnection::Sql(c) => c.execute_ddl(&ddl).await
+            .map_err(|e| e.to_string())?,
+        DbConnection::Mongo(c) => { c.execute_mql(&ddl).await.map_err(|e| e.to_string())?; }
+        DbConnection::Redis(c) => { c.execute_redis_cmd(&ddl).await.map_err(|e| e.to_string())?; }
+    }
+    
+    Ok(())
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
@@ -138,6 +157,7 @@ fn main() {
             disconnect_database,
             execute_query,
             get_schema,
+            execute_ddl,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

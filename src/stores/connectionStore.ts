@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { invoke } from '@tauri-apps/api/core';
 import { Connection, ConnectionConfig } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -80,7 +81,7 @@ export const useConnectionStore = create<ConnectionState>()(
             ssl: connection.ssl || false,
           };
           
-          await window.__TAURI__.invoke('connect_database', { connection: connectionData });
+          await invoke('connect_database', { connection: connectionData });
           get().setConnectionStatus(id, 'connected');
         } catch (error: any) {
           const errorMessage = error.message || String(error);
@@ -91,7 +92,7 @@ export const useConnectionStore = create<ConnectionState>()(
       },
       
       disconnect: (id) => {
-        window.__TAURI__.invoke('disconnect_database', { id });
+        invoke('disconnect_database', { id });
         get().setConnectionStatus(id, 'disconnected');
       },
       

@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { invoke } from '@tauri-apps/api/core';
 import { Query, QueryResult, QueryHistory } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -64,11 +65,21 @@ export const useQueryStore = create<QueryState>((set, get) => ({
     get().updateQuery(id, { status: 'running' });
     
     try {
-      const result = await window.__TAURI__.invoke('execute_query', { id, sql });
+       const result = await invoke<{
+        columns: string[];
+        types: string[];
+        rows: any[][];
+        row_count: number;
+        affected_rows: number;
+      }>('execute_query', { id, sql });
       const executionTime = Date.now() - startTime;
       
-      const queryResult: QueryResult = {
-        ...result,
+       const queryResult: QueryResult = {
+        columns: result.columns,
+        types: result.types,
+        rows: result.rows,
+        rowCount: result.row_count,
+        affectedRows: result.affected_rows,
         executionTime,
       };
       

@@ -261,4 +261,12 @@ impl DatabaseConnection {
         
         Ok(columns)
     }
+    
+    pub async fn execute_ddl(&self, ddl: &str) -> Result<(), Box<dyn std::error::Error>> {
+        sqlx::QueryBuilder::new(ddl)
+            .build()
+            .execute(&self.pool)
+            .await?;
+        Ok(())
+    }
 }

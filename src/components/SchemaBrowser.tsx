@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import { Connection, TableInfo, ColumnInfo } from '../types';
 import { useConnectionStore } from '../stores/connectionStore';
 import { useQueryStore } from '../stores/queryStore';
@@ -46,7 +47,7 @@ export function SchemaBrowser({ connection, onSelectTable, onQuickAction }: Sche
     if (!connection) return;
     setLoading(true);
     try {
-      const result = await window.__TAURI__.invoke('get_schema', { 
+      const result = await invoke<TableInfo[]>('get_schema', { 
         connectionId: connection.id 
       });
       setSchemaTree(buildTree(result, connection.database));
