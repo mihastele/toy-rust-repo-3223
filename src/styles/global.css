@@ -1,0 +1,95 @@
+:root {
+  --bg-primary: #1e1e2e;
+  --bg-secondary: #282838;
+  --bg-tertiary: #313244;
+  --bg-hover: #3b3c52;
+  --bg-active: #45475a;
+  
+  --text-primary: #cdd6f4;
+  --text-secondary: #a6adc8;
+  --text-muted: #6c7086;
+  
+  --accent-primary: #89b4fa;
+  --accent-secondary: #74c7ec;
+  --accent-success: #a6e3a1;
+  --accent-warning: #f9e2af;
+  --accent-error: #f38ba8;
+  
+  --border-color: #3b3c52;
+  --border-radius: 6px;
+  
+  --font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+  --font-size: 13px;
+  
+  --sidebar-width: 260px;
+  --toolbar-height: 48px;
+  --result-header-height: 36px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+  font-size: var(--font-size);
+  color: var(--text-primary);
+  background-color: var(--bg-primary);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--bg-active);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+input, textarea, select, button {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+button {
+  cursor: pointer;
+  border: none;
+  outline: none;
+}
+
+a {
+  color: var(--accent-primary);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+.main-content {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
